@@ -69,6 +69,7 @@ export type Visit = {
   replace: boolean
   preserveScroll: PreserveStateOption
   preserveState: PreserveStateOption
+  async: boolean
   only: Array<string>
   except: Array<string>
   headers: Record<string, string>
