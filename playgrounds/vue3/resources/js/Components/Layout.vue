@@ -14,6 +14,7 @@ const appName = computed(() => page.props.appName)
     <Link href="/users" class="hover:underline">Users</Link>
     <Link href="/article" class="hover:underline">Article</Link>
     <Link href="/form" class="hover:underline">Form</Link>
+    <Link href="/async" class="hover:underline">Async Request</Link>
     <Link href="/logout" method="post" as="button" type="button" class="hover:underline">Logout</Link>
   </nav>
   <main class="px-10 py-8">

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,6 +85,25 @@ Route::post('/user', function () {
 
 Route::get('/login', function () {
     return inertia('Login');
+});
+
+Route::get('/async', function () {
+    return inertia('Async', [
+        'sleep' => Inertia::lazy(function () {
+            info('hit the lazy bit');
+            sleep(1);
+        }),
+    ]);
+});
+
+Route::get('/sleepy', function () {
+    sleep(2);
+    return inertia('Users');
+});
+
+Route::post('/sleepy', function () {
+    sleep(2);
+    return inertia('Article');
 });
 
 Route::post('/logout', function () {
