@@ -96,6 +96,10 @@ Route::get('/async', function () {
     ]);
 });
 
+Route::get('/goodbye', function () {
+    return Inertia::location('https://inertiajs.com/redirects');
+});
+
 Route::get('/sleepy', function () {
     sleep(2);
     return inertia('Users');

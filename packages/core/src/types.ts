@@ -69,7 +69,6 @@ export type Visit = {
   replace: boolean
   preserveScroll: PreserveStateOption
   preserveState: PreserveStateOption
-  async: boolean
   only: Array<string>
   except: Array<string>
   headers: Record<string, string>
@@ -180,6 +179,14 @@ export type VisitOptions = Partial<
   }
 >
 
+export type VisitHelperOptions = Omit<VisitOptions, 'method' | 'data'>
+
+export type RouterInitParams = {
+  initialPage: Page
+  resolveComponent: PageResolver
+  swapComponent: PageHandler
+}
+
 export type PendingVisit = Visit & {
   url: URL
   completed: boolean
@@ -187,10 +194,7 @@ export type PendingVisit = Visit & {
   interrupted: boolean
 }
 
-export type ActiveVisit = PendingVisit &
-  Required<VisitOptions> & {
-    cancelToken: AbortController
-  }
+export type ActiveVisit = PendingVisit & Required<VisitOptions>
 
 export type VisitId = unknown
 export type Component = unknown
