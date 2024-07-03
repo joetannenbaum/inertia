@@ -13,6 +13,7 @@ import {
   GlobalEventNames,
   GlobalEventResult,
   LocationVisit,
+  Method,
   Page,
   PendingVisit,
   RequestPayload,
@@ -112,23 +113,12 @@ export class Router {
       queryStringArrayFormat = 'brackets',
     }: VisitOptions = {},
   ): void {
-    let url = typeof href === 'string' ? hrefToUrl(href) : href
-
-    // TODO: Feels like url/data could be resolved in one shot in a method somewhere
-    if ((hasFiles(data) || forceFormData) && !isFormData(data)) {
-      data = objectToFormData(data)
-    }
-
-    if (!isFormData(data)) {
-      const [_href, _data] = mergeDataIntoQueryString(method, url, data, queryStringArrayFormat)
-      url = hrefToUrl(_href)
-      data = _data
-    }
+    const [url, _data] = this.transformUrlAndData(href, data, method, forceFormData, queryStringArrayFormat)
 
     const visit: PendingVisit = {
       url,
       method,
-      data,
+      data: _data,
       replace,
       preserveScroll,
       preserveState,
@@ -157,7 +147,7 @@ export class Router {
     fireStartEvent(visit)
     onStart(visit)
 
-    this.activeSyncRequest = new Request({
+    this.activeSyncRequest = Request.create({
       ...visit,
       onCancelToken,
       onBefore,
@@ -183,6 +173,28 @@ export class Router {
     )
 
     return this.visit(url, { preserveState: true, ...options, replace: true })
+  }
+
+  protected transformUrlAndData(
+    href: string | URL,
+    data: RequestPayload,
+    method: Method,
+    forceFormData: VisitOptions['forceFormData'],
+    queryStringArrayFormat: VisitOptions['queryStringArrayFormat'],
+  ): [URL, RequestPayload] {
+    let url = typeof href === 'string' ? hrefToUrl(href) : href
+
+    if ((hasFiles(data) || forceFormData) && !isFormData(data)) {
+      data = objectToFormData(data)
+    }
+
+    if (isFormData(data)) {
+      return [url, data]
+    }
+
+    const [_href, _data] = mergeDataIntoQueryString(method, url, data, queryStringArrayFormat)
+
+    return [hrefToUrl(_href), _data]
   }
 
   protected initializeVisit(): void {
@@ -214,7 +226,7 @@ export class Router {
 
   protected setupEventListeners(): void {
     window.addEventListener('popstate', this.handlePopstateEvent.bind(this))
-    document.addEventListener('scroll', debounce(Scroll.listen, 100), true)
+    document.addEventListener('scroll', debounce(Scroll.onScroll, 100), true)
   }
 
   protected isBackForwardVisit(): boolean {

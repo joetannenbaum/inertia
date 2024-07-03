@@ -35,6 +35,10 @@ export class Request {
     })
   }
 
+  public static create(params: ActiveVisit): Request {
+    return new Request(params)
+  }
+
   protected isInertiaResponse(): boolean {
     return this.responseHasHeader('x-inertia')
   }
