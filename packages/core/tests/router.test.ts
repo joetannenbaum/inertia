@@ -77,7 +77,7 @@ suite('init', () => {
 
     getRouter()
 
-    expect(navTypeSpy).toHaveBeenCalledTimes(1)
+    expect(navTypeSpy).toHaveBeenCalledOnce()
     expect(historySpy).toHaveBeenCalledWith('rememberedState')
   })
 
@@ -87,7 +87,7 @@ suite('init', () => {
 
     getRouter()
 
-    expect(navTypeSpy).toHaveBeenCalledTimes(1)
+    expect(navTypeSpy).toHaveBeenCalledOnce()
     expect(historySpy).not.toHaveBeenCalled()
   })
 
@@ -108,20 +108,20 @@ suite('init', () => {
 
     await vi.runAllTimersAsync()
 
-    expect(navTypeSpy).toHaveBeenCalledTimes(1)
+    expect(navTypeSpy).toHaveBeenCalledOnce()
 
-    expect(historySpies.hasAnyState).toHaveBeenCalledTimes(1)
-    expect(historySpies.setState).toHaveBeenCalledTimes(1)
+    expect(historySpies.hasAnyState).toHaveBeenCalledOnce()
+    expect(historySpies.setState).toHaveBeenCalledOnce()
     expect(historySpies.setState).toHaveBeenCalledWith('version', '1')
-    expect(historySpies.getAllState).toHaveBeenCalledTimes(1)
+    expect(historySpies.getAllState).toHaveBeenCalledOnce()
 
-    expect(pageSpy).toHaveBeenCalledTimes(1)
+    expect(pageSpy).toHaveBeenCalledOnce()
     expect(pageSpy).toHaveBeenCalledWith({ myState: 'is here' }, { preserveScroll: true, preserveState: true })
 
-    expect(scrollRestoreSpy).toHaveBeenCalledTimes(1)
+    expect(scrollRestoreSpy).toHaveBeenCalledOnce()
     expect(scrollRestoreSpy).toHaveBeenCalledWith(homePage)
 
-    expect(fireNavigateEventSpy).toHaveBeenCalledTimes(1)
+    expect(fireNavigateEventSpy).toHaveBeenCalledOnce()
     expect(fireNavigateEventSpy).toHaveBeenCalledWith(homePage)
   })
 
@@ -162,21 +162,21 @@ suite('init', () => {
 
       await vi.runAllTimersAsync()
 
-      expect(sessionStorageSpies.exists).toHaveBeenCalledTimes(1)
-      expect(sessionStorageSpies.get).toHaveBeenCalledTimes(1)
-      expect(sessionStorageSpies.remove).toHaveBeenCalledTimes(1)
+      expect(sessionStorageSpies.exists).toHaveBeenCalledOnce()
+      expect(sessionStorageSpies.get).toHaveBeenCalledOnce()
+      expect(sessionStorageSpies.remove).toHaveBeenCalledOnce()
 
       expect(historySpies.getState).toHaveBeenCalledTimes(2)
       expect(historySpies.getState).toHaveBeenNthCalledWith(1, 'rememberedState', {})
       expect(historySpies.getState).toHaveBeenNthCalledWith(2, 'scrollRegions', [])
 
-      expect(pageSpies.setUrlHash).toHaveBeenCalledTimes(1)
-      expect(pageSpies.remember).toHaveBeenCalledTimes(1)
-      expect(pageSpies.scrollRegions).toHaveBeenCalledTimes(1)
-      expect(pageSpies.set).toHaveBeenCalledTimes(1)
+      expect(pageSpies.setUrlHash).toHaveBeenCalledOnce()
+      expect(pageSpies.remember).toHaveBeenCalledOnce()
+      expect(pageSpies.scrollRegions).toHaveBeenCalledOnce()
+      expect(pageSpies.set).toHaveBeenCalledOnce()
       expect(pageSpies.set).toHaveBeenCalledWith(homePage, { preserveScroll, preserveState: true })
 
-      expect(fireNavigateEventSpy).toHaveBeenCalledTimes(1)
+      expect(fireNavigateEventSpy).toHaveBeenCalledOnce()
 
       expect(scrollSpy.restore).toHaveBeenCalledTimes(shouldBeCalled)
     },
@@ -194,11 +194,11 @@ suite('init', () => {
 
     await vi.runAllTimersAsync()
 
-    expect(pageSpies.setUrlHash).toHaveBeenCalledTimes(1)
-    expect(pageSpies.set).toHaveBeenCalledTimes(1)
+    expect(pageSpies.setUrlHash).toHaveBeenCalledOnce()
+    expect(pageSpies.set).toHaveBeenCalledOnce()
     expect(pageSpies.set).toHaveBeenCalledWith(homePage, { preserveState: true })
 
-    expect(fireNavigateEventSpy).toHaveBeenCalledTimes(1)
+    expect(fireNavigateEventSpy).toHaveBeenCalledOnce()
   })
 
   test('it sets up listeners on init', { todo: true }, () => {
@@ -215,8 +215,8 @@ suite('init', () => {
     // Might have to extract the handler to something we can call directly
     window.dispatchEvent(new PopStateEvent('popstate', { state: null }))
 
-    expect(historySpy).toHaveBeenCalledTimes(1)
-    expect(scrollSpy).toHaveBeenCalledTimes(1)
+    expect(historySpy).toHaveBeenCalledOnce()
+    expect(scrollSpy).toHaveBeenCalledOnce()
     // If the state is null
     //  - re-construct the url from the current page + window hash
     //  - replace the history state with the current page + full url
@@ -239,19 +239,35 @@ suite('init', () => {
 
     await vi.runAllTimersAsync()
 
-    expect(scrollSpy).toHaveBeenCalledTimes(1)
+    expect(scrollSpy).toHaveBeenCalledOnce()
   })
 })
 
 suite('visit', () => {
-  test('it can cancel a visit', { todo: true }, () => {
-    // It can cancel an active request and will mark it as cancelled
+  test('it can cancel a visit', async () => {
+    const requestSpies = {
+      create: vi.spyOn(Request, 'create'),
+      send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
+      cancel: vi.spyOn(Request.prototype, 'cancel').mockReturnValue(),
+    }
+
+    const router = getRouter()
+
+    router.visit('/home')
+    router.cancel()
+
+    await vi.runAllTimersAsync()
+
+    expect(requestSpies.create).toHaveBeenCalledOnce()
+    expect(requestSpies.send).toHaveBeenCalledOnce()
+    expect(requestSpies.cancel).toHaveBeenCalledOnce()
+    expect(requestSpies.cancel).toHaveBeenCalledWith({ cancelled: true })
   })
 
   test.each([
     { url: '/home', expectedUrl: new URL('/home', 'http://localhost:3000') },
     { url: new URL('/home', 'http://localhost'), expectedUrl: new URL('/home', 'http://localhost') },
-  ])('it can make a visit with either a string url or URL object', ({ url, expectedUrl }) => {
+  ])('it can make a visit with either a string url or URL object', async ({ url, expectedUrl }) => {
     const requestSpies = {
       create: vi.spyOn(Request, 'create'),
       send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
@@ -261,7 +277,9 @@ suite('visit', () => {
 
     router.visit(url)
 
-    expect(requestSpies.create).toHaveBeenCalledTimes(1)
+    await vi.runAllTimersAsync()
+
+    expect(requestSpies.create).toHaveBeenCalledOnce()
     expect(requestSpies.create).toHaveBeenCalledWith(
       expect.objectContaining({
         url: expectedUrl,
@@ -271,7 +289,8 @@ suite('visit', () => {
 
   test.each([
     {
-      label: 'file',
+      from: 'file',
+      to: 'FormData',
       params: {
         data: {
           file: new File([''], 'file.txt'),
@@ -280,7 +299,8 @@ suite('visit', () => {
       expectation: () => expect.dataToBeFormData(),
     },
     {
-      label: 'force',
+      from: 'force',
+      to: 'FormData',
       params: {
         data: {
           whatever: 'ok',
@@ -290,7 +310,8 @@ suite('visit', () => {
       expectation: () => expect.dataToBeFormData(),
     },
     {
-      label: 'object',
+      from: 'object',
+      to: 'FormDataConvertible',
       params: {
         data: {
           whatever: 'ok',
@@ -298,7 +319,7 @@ suite('visit', () => {
       },
       expectation: () => expect.dataToBeFormDataConvertible(),
     },
-  ])('if the data has files it will transform the data to FormData [$label]', ({ params, expectation }) => {
+  ])('it can transform incoming data from $from to $to', async ({ params, expectation }) => {
     const requestSpies = {
       create: vi.spyOn(Request, 'create'),
       send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
@@ -308,12 +329,14 @@ suite('visit', () => {
 
     router.visit('/home', params)
 
-    expect(requestSpies.create).toHaveBeenCalledTimes(1)
+    await vi.runAllTimersAsync()
+
+    expect(requestSpies.create).toHaveBeenCalledOnce()
     expect(requestSpies.create).toHaveBeenCalledWith(expectation())
     // TODO: Also check that the url has changed?
   })
 
-  test('we can abort a request by returning false from the onBefore callback', () => {
+  test('abort a request by returning false from the onBefore callback', async () => {
     const requestSpies = {
       create: vi.spyOn(Request, 'create'),
       send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
@@ -327,11 +350,13 @@ suite('visit', () => {
       },
     })
 
+    await vi.runAllTimersAsync()
+
     expect(requestSpies.create).not.toHaveBeenCalled()
     expect(requestSpies.send).not.toHaveBeenCalled()
   })
 
-  test('we can abort a request by returning false from the global before callback', () => {
+  test('abort a request by returning false from the global before callback', async () => {
     const requestSpies = {
       create: vi.spyOn(Request, 'create'),
       send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
@@ -339,138 +364,299 @@ suite('visit', () => {
 
     const router = getRouter()
 
-    router.on('before', () => false)
+    const stopListening = router.on('before', () => false)
 
     router.visit('/home')
+
+    await vi.runAllTimersAsync()
+
+    stopListening()
 
     expect(requestSpies.create).not.toHaveBeenCalled()
     expect(requestSpies.send).not.toHaveBeenCalled()
   })
 
-  test('we will cancel an inflight request if another comes in', { todo: true }, () => {})
+  test('cancel an inflight request if another comes in', async () => {
+    const requestSpies = {
+      create: vi.spyOn(Request, 'create'),
+      send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
+      cancel: vi.spyOn(Request.prototype, 'cancel').mockReturnValue(),
+    }
 
-  test('save scroll positions for in flight requests', { todo: true }, () => {})
+    const router = getRouter()
 
-  test('we return an on cancel token from the onCancel callback', { todo: true }, () => {})
+    router.visit('/home')
+    router.visit('/about')
 
-  test('start event callbacks are fired', { todo: true }, () => {
-    // onStart
-    // global
+    await vi.runAllTimersAsync()
+
+    expect(requestSpies.create).toHaveBeenCalledTimes(2)
+    expect(requestSpies.cancel).toHaveBeenCalledOnce()
+    expect(requestSpies.cancel).toHaveBeenCalledWith({ interrupted: true })
   })
 
-  test('we send the correct headers for partial requests', { todo: true }, () => {})
+  test('save scroll positions when we start a request', async () => {
+    const requestSpies = {
+      create: vi.spyOn(Request, 'create'),
+      send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
+    }
 
-  test('we include inertia version request header', { todo: true }, () => {})
+    // TODO: This calls "reset()"... is that correct?
+    // There's a double "save" call when this isn't present
+    const pageSpies = {
+      set: vi.spyOn(page, 'set').mockResolvedValue(),
+    }
 
-  test('we include error bag in request header', { todo: true }, () => {})
+    const scrollSpy = vi.spyOn(Scroll, 'save').mockReturnValue()
 
-  test('we fire on progress events', { todo: true }, () => {
-    // onProgress
-    // global
+    const router = getRouter()
+
+    router.visit('/home')
+
+    await vi.runAllTimersAsync()
+
+    expect(scrollSpy).toHaveBeenCalledOnce()
+    expect(scrollSpy).toHaveBeenCalledWith(homePage)
   })
 
-  test('props are merged for partial request responses', { todo: true }, () => {})
+  test('start event callbacks are fired', async () => {
+    const requestSpies = {
+      create: vi.spyOn(Request, 'create'),
+      send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
+    }
 
-  test('preserve scroll option is respected after response', { todo: true }, () => {
-    // also the opposite
+    const globalOnStart = vi.fn()
+    const localOnStart = vi.fn()
+
+    const router = getRouter()
+
+    const stopListening = router.on('start', globalOnStart)
+
+    router.visit('/home', {
+      onStart: localOnStart,
+    })
+
+    await vi.runAllTimersAsync()
+
+    stopListening()
+
+    expect(requestSpies.create).toHaveBeenCalledOnce()
+    expect(requestSpies.send).toHaveBeenCalledOnce()
+
+    expect(globalOnStart).toHaveBeenCalledOnce()
+    expect(localOnStart).toHaveBeenCalledOnce()
   })
 
-  test('preserve state option is respected after response', { todo: true }, () => {
-    // if we have remembered state *and* the response component = current component
-    // also the opposite (don't preserve state)
+  test('verify that request params are passed to the request', { todo: true }, async () => {
+    const requestSpies = {
+      create: vi.spyOn(Request, 'create'),
+      send: vi.spyOn(Request.prototype, 'send').mockResolvedValue(),
+    }
+
+    const router = getRouter()
+
+    router.visit('/home', {
+      method: 'post',
+      data: {
+        name: 'John Doe',
+      },
+      headers: {
+        'X-My-Header': 'my-value',
+      },
+    })
+
+    await vi.runAllTimersAsync()
+
+    expect(requestSpies.create).toHaveBeenCalledOnce()
+    expect(requestSpies.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'post',
+        data: { name: 'John Doe' },
+        headers: {
+          'X-My-Header': 'my-value',
+        },
+      }),
+    )
   })
 
-  test('preserve url hash if response url is the same', { todo: true }, () => {})
+  test('get helper', () => {
+    const router = getRouter()
 
-  test('set the current page after a valid response', { todo: true }, () => {})
+    const visitSpy = vi.spyOn(router, 'visit').mockReturnValue()
 
-  test('if there are errors, fire error events', { todo: true }, () => {
-    // onError
-    // global
+    const data = {
+      name: 'Joe',
+    }
+
+    const options = {
+      only: ['name'],
+    }
+
+    router.get('/home', data, options)
+
+    expect(visitSpy).toHaveBeenCalledOnce()
+    expect(visitSpy).toHaveBeenCalledWith('/home', { ...options, method: 'get', data })
   })
 
-  test('if there are no errors, fire success events', { todo: true }, () => {
-    // onError
-    // global
+  test('post helper', () => {
+    const router = getRouter()
+
+    const visitSpy = vi.spyOn(router, 'visit').mockReturnValue()
+
+    const data = {
+      name: 'Joe',
+    }
+
+    const options = {
+      only: ['name'],
+    }
+
+    router.post('/home', data, options)
+
+    expect(visitSpy).toHaveBeenCalledOnce()
+    expect(visitSpy).toHaveBeenCalledWith('/home', {
+      ...options,
+      preserveState: true,
+      method: 'post',
+      data,
+    })
   })
 
-  test('if there are no errors, fire success events', { todo: true }, () => {
-    // onError
-    // global
+  test('put helper', () => {
+    const router = getRouter()
+
+    const visitSpy = vi.spyOn(router, 'visit').mockReturnValue()
+
+    const data = {
+      name: 'Joe',
+    }
+
+    const options = {
+      only: ['name'],
+    }
+
+    router.put('/home', data, options)
+
+    expect(visitSpy).toHaveBeenCalledOnce()
+    expect(visitSpy).toHaveBeenCalledWith('/home', {
+      ...options,
+      preserveState: true,
+      method: 'put',
+      data,
+    })
   })
 
-  test('set the current page for inertia responses that are not 2xx', { todo: true }, () => {
-    // onError
-    // global
+  test('patch helper', () => {
+    const router = getRouter()
+
+    const visitSpy = vi.spyOn(router, 'visit').mockReturnValue()
+
+    const data = {
+      name: 'Joe',
+    }
+
+    const options = {
+      only: ['name'],
+    }
+
+    router.patch('/home', data, options)
+
+    expect(visitSpy).toHaveBeenCalledOnce()
+    expect(visitSpy).toHaveBeenCalledWith('/home', {
+      ...options,
+      preserveState: true,
+      method: 'patch',
+      data,
+    })
   })
 
-  test('handles location responses', { todo: true }, () => {
-    // add hash to location url if request url without hash = location url without hash
-    // set the location visit object ({ preserveScroll }) in session storage
-    // see location visit test above
+  test('delete helper', () => {
+    const router = getRouter()
+
+    const visitSpy = vi.spyOn(router, 'visit').mockReturnValue()
+
+    const options = {
+      only: ['name'],
+    }
+
+    router.delete('/home', options)
+
+    expect(visitSpy).toHaveBeenCalledOnce()
+    expect(visitSpy).toHaveBeenCalledWith('/home', {
+      ...options,
+      preserveState: true,
+      method: 'delete',
+    })
   })
 
-  test('handles invalid responses', { todo: true }, () => {
-    // fire invalid event
-    // show error modal
+  test('reload helper', () => {
+    const router = getRouter()
+
+    const visitSpy = vi.spyOn(router, 'visit').mockReturnValue()
+
+    const options = {
+      only: ['name'],
+    }
+
+    router.reload(options)
+
+    expect(visitSpy).toHaveBeenCalledOnce()
+    expect(visitSpy).toHaveBeenCalledWith('http://localhost:3000/', {
+      ...options,
+      preserveState: true,
+      preserveScroll: true,
+    })
   })
 
-  test('will continue to error if there is no response in the error object', { todo: true }, () => {})
+  test.each([
+    {
+      label: 'default key',
+      key: undefined,
+      expectedKey: 'default',
+    },
+    {
+      label: 'custom key',
+      key: 'myKey',
+      expectedKey: 'myKey',
+    },
+  ])('we can remember state with $label', ({ key, expectedKey }) => {
+    const historySpies = {
+      remember: vi.spyOn(History, 'remember').mockReturnValue(),
+    }
 
-  test('once a visit completes, fire finish events', { todo: true }, () => {
-    // only fire if the visit was not cancelled/interrupted
-    // mark visit as complete(?)
-    // onFinish
-    // global
+    const router = getRouter()
+
+    router.remember({ name: 'Joe' }, key)
+
+    expect(historySpies.remember).toHaveBeenCalledOnce()
+    expect(historySpies.remember).toHaveBeenCalledWith({ name: 'Joe' }, expectedKey)
   })
 
-  test('handle actual exceptions', { todo: true }, () => {
-    // only if it's not an axios cancellation exception
-    // fire exception event
-    // finish visit (see above)
-    // if the exception event returns true, continue to throw the exception
-  })
+  test.each([
+    {
+      label: 'default key',
+      key: undefined,
+      expectedKey: 'default',
+    },
+    {
+      label: 'custom key',
+      key: 'myKey',
+      expectedKey: 'myKey',
+    },
+  ])('we can restore state with $label', ({ key, expectedKey }) => {
+    const historySpies = {
+      restore: vi.spyOn(History, 'restore').mockReturnValue(null),
+    }
 
-  test('get helper', { todo: true }, () => {})
+    const router = getRouter()
 
-  test('post helper', { todo: true }, () => {})
+    router.restore(key)
 
-  test('put helper', { todo: true }, () => {})
-
-  test('reload helper', { todo: true }, () => {
-    // preserve state
-    // preserve scroll
-    // same url
-    // get
-  })
-
-  test('patch helper', { todo: true }, () => {})
-
-  test('delete helper', { todo: true }, () => {})
-
-  test('we can remember state', { todo: true }, () => {
-    // not on server (ssr)
-    // with key
-    // without key (default)
-  })
-
-  test('we can restore state', { todo: true }, () => {
-    // not on server (ssr)
-    // with key
-    // without key (default)
+    expect(historySpies.restore).toHaveBeenCalledOnce()
+    expect(historySpies.restore).toHaveBeenCalledWith(expectedKey)
   })
 
   test('we can listen for global events', { todo: true }, () => {
     // if event is cancelable and callback returns false, cancel the event
   })
-})
-
-suite('page', () => {
-  test('we can set the current page', { todo: true }, () => {
-    // sensible defaults for scrollRegions and rememberedState
-  })
-
-  test('we can set the current page and preserve scroll', { todo: true }, () => {})
-
-  test('we can replace the current page', { todo: true }, () => {})
 })
