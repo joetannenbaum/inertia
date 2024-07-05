@@ -1,4 +1,4 @@
-import { default as Axios, AxiosResponse } from 'axios'
+import { default as axios, AxiosProgressEvent, AxiosRequestConfig, AxiosResponse } from 'axios'
 import {
   fireErrorEvent,
   fireExceptionEvent,
@@ -44,26 +44,14 @@ export class Request {
   }
 
   public send() {
-    return Axios({
+    return axios({
       method: this.params.method,
       url: urlWithoutHash(this.params.url).href,
       data: this.data,
       params: this.queryParams,
       signal: this.cancelToken.signal,
-      headers: {
-        ...this.params.headers,
-        Accept: 'text/html, application/xhtml+xml',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-Inertia': true,
-        ...this.getHeaders(),
-      },
-      onUploadProgress: (progress) => {
-        if (this.data instanceof FormData) {
-          progress.percentage = progress.progress ? Math.round(progress.progress * 100) : 0
-          fireProgressEvent(progress)
-          this.params.onProgress(progress)
-        }
-      },
+      headers: this.getHeaders(),
+      onUploadProgress: this.onProgress,
     })
       .then((response) => {
         this.response = response
@@ -77,7 +65,7 @@ export class Request {
       })
       .then(this.setPageFromResponse.bind(this))
       .then(() => {
-        const errors = currentPage.page.props.errors || {}
+        const errors = currentPage.get().props.errors || {}
 
         if (Object.keys(errors).length > 0) {
           const scopedErrors = this.getScopedErrors(errors)
@@ -87,9 +75,9 @@ export class Request {
           return this.params.onError(scopedErrors)
         }
 
-        fireSuccessEvent(currentPage.page)
+        fireSuccessEvent(currentPage.get())
 
-        return this.params.onSuccess(currentPage.page)
+        return this.params.onSuccess(currentPage.get())
       })
       .catch((error) => {
         // TODO: Is this bad?
@@ -121,7 +109,7 @@ export class Request {
       })
       .then(this.finishVisit.bind(this))
       .catch((error) => {
-        if (Axios.isCancel(error)) {
+        if (axios.isCancel(error)) {
           return
         }
 
@@ -147,6 +135,14 @@ export class Request {
     this.fireFinishEvents()
   }
 
+  protected onProgress(progress: AxiosProgressEvent): void {
+    if (this.data instanceof FormData) {
+      progress.percentage = progress.progress ? Math.round(progress.progress * 100) : 0
+      fireProgressEvent(progress)
+      this.params.onProgress(progress)
+    }
+  }
+
   protected getScopedErrors(errors: Errors & ErrorBag): Errors {
     if (!this.params.errorBag) {
       return errors
@@ -159,8 +155,8 @@ export class Request {
     // TODO: Would love to type this properly if we can
     const pageResponse: Page = this.response.data
 
-    if (this.isPartial && pageResponse.component === currentPage.page.component) {
-      pageResponse.props = { ...currentPage.page.props, ...pageResponse.props }
+    if (this.isPartial && pageResponse.component === currentPage.get().component) {
+      pageResponse.props = { ...currentPage.get().props, ...pageResponse.props }
     }
 
     this.params.preserveScroll = this.resolvePreserveOption(this.params.preserveScroll, pageResponse)
@@ -169,7 +165,7 @@ export class Request {
     if (
       this.params.preserveState &&
       History.getState('rememberedState') &&
-      pageResponse.component === currentPage.page.component
+      pageResponse.component === currentPage.get().component
     ) {
       pageResponse.rememberedState = History.getState('rememberedState')
     }
@@ -201,11 +197,16 @@ export class Request {
     return value
   }
 
-  protected getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {}
+  protected getHeaders(): AxiosRequestConfig['headers'] {
+    const headers: AxiosRequestConfig['headers'] = {
+      ...this.params.headers,
+      Accept: 'text/html, application/xhtml+xml',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-Inertia': true,
+    }
 
     if (this.isPartial) {
-      headers['X-Inertia-Partial-Component'] = currentPage.page.component
+      headers['X-Inertia-Partial-Component'] = currentPage.get().component
     }
 
     if (this.params.only.length > 0) {
@@ -220,8 +221,8 @@ export class Request {
       headers['X-Inertia-Error-Bag'] = this.params.errorBag
     }
 
-    if (currentPage.page.version) {
-      headers['X-Inertia-Version'] = currentPage.page.version
+    if (currentPage.get().version) {
+      headers['X-Inertia-Version'] = currentPage.get().version
     }
 
     return headers

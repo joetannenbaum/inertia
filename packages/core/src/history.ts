@@ -6,9 +6,9 @@ const isServer = typeof window === 'undefined'
 export class History {
   public static remember(data: unknown, key: string): void {
     History.replaceState({
-      ...currentPage.page,
+      ...currentPage.get(),
       rememberedState: {
-        ...currentPage.page?.rememberedState,
+        ...currentPage.get()?.rememberedState,
         [key]: data,
       },
     })

@@ -5,7 +5,7 @@ import { Page, PageHandler, PageResolver, PreserveStateOption, RouterInitParams 
 import { hrefToUrl, isSameUrlWithoutHash } from './url'
 
 class CurrentPage {
-  public page!: Page
+  protected page!: Page
   protected swapComponent!: PageHandler
   protected resolveComponent!: PageResolver
 
@@ -45,6 +45,10 @@ class CurrentPage {
         }
       })
     })
+  }
+
+  public get(): Page {
+    return this.page
   }
 
   public setUrlHash(hash: string): void {

@@ -142,7 +142,7 @@ export class Router {
     this.activeSyncRequest?.cancel({ interrupted: true })
 
     // Save scroll regions for the current page
-    Scroll.save(currentPage.page)
+    Scroll.save(currentPage.get())
 
     fireStartEvent(visit)
     onStart(visit)
@@ -221,7 +221,7 @@ export class Router {
 
   protected handleInitialPageVisit(): void {
     currentPage.setUrlHash(window.location.hash)
-    currentPage.set(currentPage.page, { preserveState: true }).then(() => fireNavigateEvent(currentPage.page))
+    currentPage.set(currentPage.get(), { preserveState: true }).then(() => fireNavigateEvent(currentPage.get()))
   }
 
   protected setupEventListeners(): void {
@@ -234,11 +234,11 @@ export class Router {
   }
 
   protected handleBackForwardVisit(): void {
-    History.setState('version', currentPage.page.version)
+    History.setState('version', currentPage.get().version)
 
     currentPage.set(History.getAllState(), { preserveScroll: true, preserveState: true }).then(() => {
-      Scroll.restore(currentPage.page)
-      fireNavigateEvent(currentPage.page)
+      Scroll.restore(currentPage.get())
+      fireNavigateEvent(currentPage.get())
     })
   }
 
@@ -259,23 +259,23 @@ export class Router {
     currentPage.scrollRegions(History.getState<Page['scrollRegions']>('scrollRegions', []))
 
     currentPage
-      .set(currentPage.page, { preserveScroll: locationVisit.preserveScroll, preserveState: true })
+      .set(currentPage.get(), { preserveScroll: locationVisit.preserveScroll, preserveState: true })
       .then(() => {
         if (locationVisit.preserveScroll) {
-          Scroll.restore(currentPage.page)
+          Scroll.restore(currentPage.get())
         }
 
-        fireNavigateEvent(currentPage.page)
+        fireNavigateEvent(currentPage.get())
       })
   }
 
   protected handlePopstateEvent(event: PopStateEvent): void {
     if (event.state === null) {
-      const url = hrefToUrl(currentPage.page.url)
+      const url = hrefToUrl(currentPage.get().url)
       url.hash = window.location.hash
 
-      History.replaceState({ ...currentPage.page, url: url.href })
-      Scroll.reset(currentPage.page)
+      History.replaceState({ ...currentPage.get(), url: url.href })
+      Scroll.reset(currentPage.get())
 
       return
     }
