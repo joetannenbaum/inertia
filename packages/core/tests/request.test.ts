@@ -1,9 +1,9 @@
-import axios, { AxiosResponse } from 'axios'
+import axios, { AxiosHeaders, AxiosResponse } from 'axios'
 import { beforeEach, expect, test, vi } from 'vitest'
 import * as events from '../src/events'
-import modal from '../src/modal'
 import { page } from '../src/page'
 import { Request } from '../src/request'
+import { Response } from '../src/response'
 import { ActiveVisit } from '../src/types'
 
 const getRequestParams = (overrides: Partial<ActiveVisit> = {}): ActiveVisit => ({
@@ -39,7 +39,7 @@ const axiosResponse = (overrides = {}): AxiosResponse => ({
   statusText: 'OK',
   headers: {},
   config: {
-    headers: {},
+    headers: new AxiosHeaders(),
   },
   request: {},
   ...overrides,
@@ -61,7 +61,6 @@ beforeEach(() => {
 })
 
 vi.mock('axios')
-vi.mock('modal')
 
 test('create a request from the helper method', () => {
   const request = Request.create(getRequestParams())
@@ -71,13 +70,14 @@ test('create a request from the helper method', () => {
 
 test('sending the correct headers for partial requests', async () => {
   vi.spyOn(page, 'get').mockReturnValue(homePage)
-  vi.spyOn(modal, 'show').mockResolvedValue()
-
   axios.mockResolvedValue(axiosResponse())
+  const responseHandleSpy = vi.spyOn(Response.prototype, 'handle').mockResolvedValue()
 
   const request = Request.create(getRequestParams({ only: ['foo', 'bar'] }))
 
   request.send()
+
+  await vi.runAllTimersAsync()
 
   expect(axios).toHaveBeenCalledWith({
     method: 'get',
@@ -95,17 +95,21 @@ test('sending the correct headers for partial requests', async () => {
     params: {},
     signal: expect.any(Object),
   })
+
+  expect(responseHandleSpy).toHaveBeenCalledOnce()
 })
 
 test('including inertia version request header', async () => {
   vi.spyOn(page, 'get').mockReturnValue({ ...homePage, version: '2' })
-  vi.spyOn(modal, 'show').mockResolvedValue()
+  const responseHandleSpy = vi.spyOn(Response.prototype, 'handle').mockResolvedValue()
 
   axios.mockResolvedValue(axiosResponse())
 
   const request = Request.create(getRequestParams())
 
   request.send()
+
+  await vi.runAllTimersAsync()
 
   expect(axios).toHaveBeenCalledWith({
     method: 'get',
@@ -121,11 +125,13 @@ test('including inertia version request header', async () => {
     params: {},
     signal: expect.any(Object),
   })
+
+  expect(responseHandleSpy).toHaveBeenCalledOnce()
 })
 
 test('including the error bag in request header', async () => {
   vi.spyOn(page, 'get').mockReturnValue(homePage)
-  vi.spyOn(modal, 'show').mockResolvedValue()
+  const responseHandleSpy = vi.spyOn(Response.prototype, 'handle').mockResolvedValue()
 
   axios.mockResolvedValue(axiosResponse())
 
@@ -136,6 +142,8 @@ test('including the error bag in request header', async () => {
   )
 
   request.send()
+
+  await vi.runAllTimersAsync()
 
   expect(axios).toHaveBeenCalledWith({
     method: 'get',
@@ -152,6 +160,8 @@ test('including the error bag in request header', async () => {
     params: {},
     signal: expect.any(Object),
   })
+
+  expect(responseHandleSpy).toHaveBeenCalledOnce()
 })
 
 test('firing on progress events', { todo: true }, async () => {
@@ -184,7 +194,8 @@ test.each([
   },
 ])('$label a request', async ({ cancelParams, expectedFinal }) => {
   vi.spyOn(page, 'get').mockReturnValue({ ...homePage, version: '2' })
-  vi.spyOn(modal, 'show').mockResolvedValue()
+  const responseHandleSpy = vi.spyOn(Response.prototype, 'handle').mockResolvedValue()
+
   const abortSpy = vi.spyOn(AbortController.prototype, 'abort')
   const fireFinishEventsSpy = vi.spyOn(events, 'fireFinishEvent').mockReturnValue()
   const cancelFn = vi.fn()
@@ -200,8 +211,9 @@ test.each([
   const request = Request.create(requestParams)
 
   request.send()
-
   request.cancel(cancelParams)
+
+  await vi.runAllTimersAsync()
 
   expect(cancelFn).toHaveBeenCalledOnce()
   expect(abortSpy).toHaveBeenCalledOnce()
@@ -216,65 +228,118 @@ test.each([
 
   expect(finishFn).toHaveBeenCalledOnce()
   expect(finishFn).toHaveBeenCalledWith(finalParams)
+
+  expect(responseHandleSpy).toHaveBeenCalledOnce()
 })
 
-test('props are merged for partial request responses', { todo: true }, async () => {})
+test('errors with responses', async () => {
+  vi.spyOn(page, 'get').mockReturnValue({ ...homePage, version: '2' })
+  const responseHandleSpy = vi.spyOn(Response.prototype, 'handle').mockResolvedValue()
 
-test('preserve scroll option is respected after response', { todo: true }, async () => {
-  // also the opposite
+  const fireFinishEventsSpy = vi.spyOn(events, 'fireFinishEvent').mockReturnValue()
+  const finishFn = vi.fn()
+
+  axios.mockRejectedValue({
+    response: axiosResponse({
+      status: 422,
+    }),
+  })
+
+  const requestParams = getRequestParams({
+    onFinish: finishFn,
+  })
+
+  const request = Request.create(requestParams)
+
+  request.send()
+
+  await vi.runAllTimersAsync()
+
+  expect(fireFinishEventsSpy).toHaveBeenCalledOnce()
+  expect(fireFinishEventsSpy).toHaveBeenCalledWith(requestParams)
+
+  expect(finishFn).toHaveBeenCalledOnce()
+  expect(finishFn).toHaveBeenCalledWith(requestParams)
+
+  expect(responseHandleSpy).toHaveBeenCalledOnce()
 })
 
-test('preserve state option is respected after response', { todo: true }, async () => {
-  // if we have remembered state *and* the response component = current component
-  // also the opposite (don't preserve state)
+test.each([
+  {
+    shouldThrow: true,
+    label: 'should throw',
+  },
+  {
+    shouldThrow: false,
+    label: 'should not throw',
+  },
+])('handle generic errors and it $label', { todo: true }, async ({ shouldThrow }) => {
+  vi.spyOn(page, 'get').mockReturnValue(homePage)
+  const responseHandleSpy = vi.spyOn(Response.prototype, 'handle').mockResolvedValue()
+
+  const fireFinishEventsSpy = vi.spyOn(events, 'fireFinishEvent').mockReturnValue()
+  const fireExceptionEventsSpy = vi.spyOn(events, 'fireExceptionEvent').mockReturnValue(shouldThrow)
+  const finishFn = vi.fn()
+
+  axios.mockRejectedValue()
+
+  const requestParams = getRequestParams({
+    onFinish: finishFn,
+  })
+
+  const request = Request.create(requestParams)
+
+  //   if (!shouldThrow) {
+  await expect(request.send()).rejects.toThrow()
+  //   } else {
+  //     await request.send()
+  //   }
+
+  await vi.runAllTimersAsync()
+
+  expect(fireFinishEventsSpy).toHaveBeenCalledOnce()
+  expect(fireFinishEventsSpy).toHaveBeenCalledWith(requestParams)
+
+  expect(finishFn).toHaveBeenCalledOnce()
+  expect(finishFn).toHaveBeenCalledWith(requestParams)
+
+  expect(fireExceptionEventsSpy).toHaveBeenCalledOnce()
+
+  expect(responseHandleSpy).not.toHaveBeenCalled()
 })
 
-test('preserve url hash if response url is the same', { todo: true }, async () => {})
+test('request cancelled errors are handled gracefully', async () => {
+  vi.spyOn(page, 'get').mockReturnValue(homePage)
+  const responseHandleSpy = vi.spyOn(Response.prototype, 'handle').mockResolvedValue()
 
-test('set the current page after a valid response', { todo: true }, async () => {})
+  const fireFinishEventsSpy = vi.spyOn(events, 'fireFinishEvent').mockReturnValue()
+  const fireExceptionEventsSpy = vi.spyOn(events, 'fireExceptionEvent').mockReturnValue()
+  const isCancelSpy = vi.spyOn(axios, 'isCancel').mockReturnValue(true)
 
-test('if there are errors, fire error events', { todo: true }, async () => {
-  // onError
-  // global
-})
+  const finishFn = vi.fn()
 
-test('if there are no errors, fire success events', { todo: true }, async () => {
-  // onError
-  // global
-})
+  axios.mockRejectedValue()
 
-test('set the current page for inertia responses that are not 2xx', { todo: true }, async () => {
-  // onError
-  // global
-})
+  const requestParams = getRequestParams({
+    onFinish: finishFn,
+  })
 
-test('handles location responses', { todo: true }, async () => {
-  // add hash to location url if request url without hash = location url without hash
-  // set the location visit object ({ preserveScroll }) in session storage
-  // see location visit test above
-})
+  const request = Request.create(requestParams)
 
-test('handles invalid responses', { todo: true }, async () => {
-  // fire invalid event
-  // show error modal
-})
+  request.send()
 
-test('will continue to error if there is no response in the error object', { todo: true }, async () => {})
+  await vi.runAllTimersAsync()
 
-test('once a visit completes, fire finish events', { todo: true }, async () => {
-  // only fire if the visit was not cancelled/interrupted
-  // mark visit as complete(?)
-  // onFinish
-  // global
-})
+  expect(fireFinishEventsSpy).toHaveBeenCalledOnce()
+  expect(fireFinishEventsSpy).toHaveBeenCalledWith(requestParams)
 
-test('handle actual exceptions', { todo: true }, async () => {
-  // only if it's not an axios cancellation exception
-  // fire exception event
-  // finish visit (see above)
-  // if the exception event returns true, continue to throw the exception
-})
+  expect(finishFn).toHaveBeenCalledOnce()
+  expect(finishFn).toHaveBeenCalledWith(requestParams)
 
-test('we return an on cancel token from the onCancel callback', { todo: true }, async () => {
-  // https://inertiajs.com/manual-visits#visit-cancellation
+  expect(fireExceptionEventsSpy).not.toHaveBeenCalled()
+
+  expect(isCancelSpy).toHaveBeenCalledOnce()
+
+  expect(responseHandleSpy).not.toHaveBeenCalled()
+  expect(fireExceptionEventsSpy).not.toHaveBeenCalled()
 })

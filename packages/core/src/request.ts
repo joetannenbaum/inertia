@@ -1,224 +1,96 @@
 import { default as axios, AxiosProgressEvent, AxiosRequestConfig, AxiosResponse } from 'axios'
-import {
-  fireErrorEvent,
-  fireExceptionEvent,
-  fireFinishEvent,
-  fireInvalidEvent,
-  fireProgressEvent,
-  fireSuccessEvent,
-} from './events'
-import { History } from './history'
-import modal from './modal'
+import { fireExceptionEvent, fireFinishEvent, fireProgressEvent } from './events'
 import { page as currentPage } from './page'
-import { SessionStorage } from './sessionStorage'
-import { ActiveVisit, ErrorBag, Errors, LocationVisit, Page, PreserveStateOption, RequestPayload } from './types'
-import { hrefToUrl, isSameUrlWithoutHash, setHashIfSameUrl, urlWithoutHash } from './url'
+import { RequestParams } from './requestParams'
+import { Response } from './response'
+import { ActiveVisit } from './types'
+import { urlWithoutHash } from './url'
 
 export class Request {
-  protected queryParams: RequestPayload = {}
-  protected data: RequestPayload = {}
-  protected isPartial = false
   protected response!: AxiosResponse
   protected cancelToken!: AbortController
+  protected requestParams: RequestParams
 
-  constructor(protected params: ActiveVisit) {
-    this.data = this.params.method === 'get' ? {} : this.params.data
-    this.queryParams = this.params.method === 'get' ? this.params.data : {}
-    this.isPartial = this.params.only.length > 0 || this.params.except.length > 0
+  constructor(params: ActiveVisit) {
+    this.requestParams = RequestParams.create(params)
     this.cancelToken = new AbortController()
-
-    this.params.onCancelToken({
-      cancel: () => {
-        // TODO: Do we need to check if the request is already cancelled or completed?
-        this.cancel({ cancelled: true })
-      },
-    })
+    this.requestParams.onCancelToken(() => this.cancel({ cancelled: true }))
   }
 
   public static create(params: ActiveVisit): Request {
     return new Request(params)
   }
 
-  protected isInertiaResponse(): boolean {
-    return this.responseHasHeader('x-inertia')
-  }
-
-  public send() {
+  public async send() {
     return axios({
-      method: this.params.method,
-      url: urlWithoutHash(this.params.url).href,
-      data: this.data,
-      params: this.queryParams,
+      method: this.requestParams.params.method,
+      url: urlWithoutHash(this.requestParams.params.url).href,
+      data: this.requestParams.data(),
+      params: this.requestParams.queryParams(),
       signal: this.cancelToken.signal,
       headers: this.getHeaders(),
       onUploadProgress: this.onProgress,
     })
       .then((response) => {
-        this.response = response
-
-        if (!this.isInertiaResponse()) {
-          // If we didn't even receive an Inertia response, we can stop here
-          return Promise.reject({ response: this.response })
-        }
-
-        return response
-      })
-      .then(this.setPageFromResponse.bind(this))
-      .then(() => {
-        const errors = currentPage.get().props.errors || {}
-
-        if (Object.keys(errors).length > 0) {
-          const scopedErrors = this.getScopedErrors(errors)
-
-          fireErrorEvent(scopedErrors)
-
-          return this.params.onError(scopedErrors)
-        }
-
-        fireSuccessEvent(currentPage.get())
-
-        return this.params.onSuccess(currentPage.get())
+        return Response.create(this.requestParams, response).handle()
       })
       .catch((error) => {
-        // TODO: Is this bad?
-        if (error.response) {
-          this.response = error.response
-        }
-
-        if (this.isInertiaResponse()) {
-          return currentPage.set(this.response.data)
-        }
-
-        if (this.isLocationVisitResponse()) {
-          const locationUrl = hrefToUrl(this.getResponseHeader('x-inertia-location'))
-
-          setHashIfSameUrl(this.params.url, locationUrl)
-
-          return this.locationVisit(locationUrl, this.params.preserveScroll === true)
-        }
-
-        if (this.response) {
-          if (fireInvalidEvent(this.response)) {
-            modal.show(this.response.data)
-          }
-
-          return
+        if (error?.response) {
+          return Response.create(this.requestParams, error.response).handle()
         }
 
         return Promise.reject(error)
       })
-      .then(this.finishVisit.bind(this))
       .catch((error) => {
         if (axios.isCancel(error)) {
           return
         }
 
-        const throwException = fireExceptionEvent(error)
-
-        this.finishVisit()
-
-        if (throwException) {
+        if (fireExceptionEvent(error)) {
           return Promise.reject(error)
         }
       })
+      .finally(() => {
+        this.finish()
+      })
+  }
+
+  protected finish(): void {
+    if (this.requestParams.wasCancelledAtAll()) {
+      return
+    }
+
+    this.requestParams.markAsFinished()
+    this.fireFinishEvents()
+  }
+
+  protected fireFinishEvents(): void {
+    fireFinishEvent(this.requestParams.all())
+    this.requestParams.onFinish()
   }
 
   public cancel({ cancelled = false, interrupted = false }: { cancelled?: boolean; interrupted?: boolean }): void {
     this.cancelToken.abort()
 
-    this.params.onCancel()
-
-    this.params.completed = false
-    this.params.cancelled = cancelled
-    this.params.interrupted = interrupted
+    this.requestParams.markAsCancelled({ cancelled, interrupted })
 
     this.fireFinishEvents()
   }
 
   protected onProgress(progress: AxiosProgressEvent): void {
-    if (this.data instanceof FormData) {
+    if (this.requestParams.data() instanceof FormData) {
       progress.percentage = progress.progress ? Math.round(progress.progress * 100) : 0
       fireProgressEvent(progress)
-      this.params.onProgress(progress)
+      this.requestParams.params.onProgress(progress)
     }
-  }
-
-  protected getScopedErrors(errors: Errors & ErrorBag): Errors {
-    if (!this.params.errorBag) {
-      return errors
-    }
-
-    return errors[this.params.errorBag] || {}
-  }
-
-  protected setPageFromResponse(): Promise<void> {
-    // TODO: Would love to type this properly if we can
-    const pageResponse: Page = this.response.data
-
-    if (this.isPartial && pageResponse.component === currentPage.get().component) {
-      pageResponse.props = { ...currentPage.get().props, ...pageResponse.props }
-    }
-
-    this.params.preserveScroll = this.resolvePreserveOption(this.params.preserveScroll, pageResponse)
-    this.params.preserveState = this.resolvePreserveOption(this.params.preserveState, pageResponse)
-
-    if (
-      this.params.preserveState &&
-      History.getState('rememberedState') &&
-      pageResponse.component === currentPage.get().component
-    ) {
-      pageResponse.rememberedState = History.getState('rememberedState')
-    }
-
-    const responseUrl = hrefToUrl(pageResponse.url)
-
-    setHashIfSameUrl(this.params.url, responseUrl)
-
-    // TODO: I moved this out of the if statement,
-    // but I'm not sure if this is always applicable outside of the hash logic
-    pageResponse.url = responseUrl.href
-
-    return currentPage.set(pageResponse, {
-      replace: this.params.replace,
-      preserveScroll: this.params.preserveScroll,
-      preserveState: this.params.preserveState,
-    })
-  }
-
-  protected resolvePreserveOption(value: PreserveStateOption, page: Page): boolean {
-    if (typeof value === 'function') {
-      return value(page)
-    }
-
-    if (value === 'errors') {
-      return Object.keys(page.props.errors || {}).length > 0
-    }
-
-    return value
   }
 
   protected getHeaders(): AxiosRequestConfig['headers'] {
     const headers: AxiosRequestConfig['headers'] = {
-      ...this.params.headers,
+      ...this.requestParams.headers(),
       Accept: 'text/html, application/xhtml+xml',
       'X-Requested-With': 'XMLHttpRequest',
       'X-Inertia': true,
-    }
-
-    if (this.isPartial) {
-      headers['X-Inertia-Partial-Component'] = currentPage.get().component
-    }
-
-    if (this.params.only.length > 0) {
-      headers['X-Inertia-Partial-Data'] = this.params.only.join(',')
-    }
-
-    if (this.params.except.length > 0) {
-      headers['X-Inertia-Partial-Except'] = this.params.except.join(',')
-    }
-
-    if (this.params.errorBag && this.params.errorBag.length > 0) {
-      headers['X-Inertia-Error-Bag'] = this.params.errorBag
     }
 
     if (currentPage.get().version) {
@@ -226,52 +98,5 @@ export class Request {
     }
 
     return headers
-  }
-
-  protected finishVisit(): void {
-    if (this.params.cancelled || this.params.interrupted) {
-      return
-    }
-
-    this.params.completed = true
-    this.params.cancelled = false
-    this.params.interrupted = false
-
-    this.fireFinishEvents()
-  }
-
-  protected fireFinishEvents(): void {
-    fireFinishEvent(this.params)
-    this.params.onFinish(this.params)
-  }
-
-  protected responseHasStatus(status: number): boolean {
-    return this.response.status === status
-  }
-
-  protected getResponseHeader(header: string): string {
-    return this.response.headers[header]
-  }
-
-  protected responseHasHeader(header: string): boolean {
-    return this.getResponseHeader(header) !== undefined
-  }
-
-  protected isLocationVisitResponse(): boolean {
-    return this.responseHasStatus(409) && this.responseHasHeader('x-inertia-location')
-  }
-
-  protected locationVisit(url: URL, preserveScroll: LocationVisit['preserveScroll']): boolean | void {
-    try {
-      SessionStorage.set({ preserveScroll })
-
-      window.location.href = url.href
-
-      if (isSameUrlWithoutHash(window.location, url)) {
-        window.location.reload()
-      }
-    } catch (error) {
-      return false
-    }
   }
 }
