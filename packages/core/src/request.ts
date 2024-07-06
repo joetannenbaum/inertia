@@ -3,7 +3,7 @@ import { fireExceptionEvent, fireFinishEvent, fireProgressEvent } from './events
 import { page as currentPage } from './page'
 import { RequestParams } from './requestParams'
 import { Response } from './response'
-import { ActiveVisit } from './types'
+import { ActiveVisit, Page } from './types'
 import { urlWithoutHash } from './url'
 
 export class Request {
@@ -11,14 +11,17 @@ export class Request {
   protected cancelToken!: AbortController
   protected requestParams: RequestParams
 
-  constructor(params: ActiveVisit) {
+  constructor(
+    params: ActiveVisit,
+    protected page: Page,
+  ) {
     this.requestParams = RequestParams.create(params)
     this.cancelToken = new AbortController()
     this.requestParams.onCancelToken(() => this.cancel({ cancelled: true }))
   }
 
-  public static create(params: ActiveVisit): Request {
-    return new Request(params)
+  public static create(params: ActiveVisit, page: Page): Request {
+    return new Request(params, page)
   }
 
   public async send() {
@@ -32,11 +35,11 @@ export class Request {
       onUploadProgress: this.onProgress.bind(this),
     })
       .then((response) => {
-        return Response.create(this.requestParams, response).handle()
+        return Response.create(this.requestParams, response, this.page).handle()
       })
       .catch((error) => {
         if (error?.response) {
-          return Response.create(this.requestParams, error.response).handle()
+          return Response.create(this.requestParams, error.response, this.page).handle()
         }
 
         return Promise.reject(error)

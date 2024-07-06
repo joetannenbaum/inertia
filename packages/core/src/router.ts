@@ -6,6 +6,7 @@ import { History } from './history'
 import { navigationType } from './navigationType'
 import { page as currentPage } from './page'
 import { Request } from './request'
+import { RequestStream } from './requestStream'
 import { Scroll } from './scroll'
 import { SessionStorage } from './sessionStorage'
 import {
@@ -24,7 +25,8 @@ import {
 import { hrefToUrl, mergeDataIntoQueryString } from './url'
 
 export class Router {
-  protected activeSyncRequest?: Request
+  protected syncRequestStream = new RequestStream(1, true)
+  protected asyncRequestStream = new RequestStream(Infinity, false)
 
   public init({ initialPage, resolveComponent, swapComponent }: RouterInitParams): void {
     currentPage.init({
@@ -59,7 +61,7 @@ export class Router {
   }
 
   public reload(options: Omit<VisitOptions, 'preserveScroll' | 'preserveState'> = {}): void {
-    return this.visit(window.location.href, { ...options, preserveScroll: true, preserveState: true })
+    return this.visit(window.location.href, { ...options, preserveScroll: true, preserveState: true, async: true })
   }
 
   public remember(data: unknown, key = 'default'): void {
@@ -86,7 +88,8 @@ export class Router {
   }
 
   public cancel(): void {
-    this.activeSyncRequest?.cancel({ cancelled: true })
+    this.asyncRequestStream.cancelInFlight(true)
+    this.syncRequestStream.cancelInFlight(true)
   }
 
   public visit(
@@ -111,6 +114,7 @@ export class Router {
       onSuccess = () => {},
       onError = () => {},
       queryStringArrayFormat = 'brackets',
+      async = false,
     }: VisitOptions = {},
   ): void {
     const [url, _data] = this.transformUrlAndData(href, data, method, forceFormData, queryStringArrayFormat)
@@ -131,6 +135,7 @@ export class Router {
       cancelled: false,
       completed: false,
       interrupted: false,
+      async,
     }
 
     // If either of these return false, we don't want to continue
@@ -138,8 +143,9 @@ export class Router {
       return
     }
 
-    // Cancel any active requests
-    this.activeSyncRequest?.cancel({ interrupted: true })
+    const requestStream = async ? this.asyncRequestStream : this.syncRequestStream
+
+    requestStream.cancelInFlight()
 
     // Save scroll regions for the current page
     Scroll.save(currentPage.get())
@@ -147,22 +153,23 @@ export class Router {
     fireStartEvent(visit)
     onStart(visit)
 
-    this.activeSyncRequest = Request.create({
-      ...visit,
-      onCancelToken,
-      onBefore,
-      onStart,
-      onProgress,
-      onFinish,
-      onCancel,
-      onSuccess,
-      onError,
-      queryStringArrayFormat,
-    })
+    const request = Request.create(
+      {
+        ...visit,
+        onCancelToken,
+        onBefore,
+        onStart,
+        onProgress,
+        onFinish,
+        onCancel,
+        onSuccess,
+        onError,
+        queryStringArrayFormat,
+      },
+      currentPage.get(),
+    )
 
-    this.activeSyncRequest.send().then(() => {
-      this.activeSyncRequest = undefined
-    })
+    requestStream.send(request)
   }
 
   public replace(url: URL | string, options: Omit<VisitOptions, 'replace'> = {}): void {

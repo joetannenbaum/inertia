@@ -36,6 +36,12 @@ const simulateCancelledRequest = () => {
   })
 }
 
+const triggerLongReload = () => {
+  router.reload({
+    only: ['sleep'],
+  })
+}
+
 onMounted(() => {
   console.log('on mounted')
 
@@ -43,7 +49,6 @@ onMounted(() => {
   //     router.reload({
   //       only: ['sleep'],
   //     })
-  //     reloadCount.value++
   //   }, 1000)
 })
 
@@ -56,13 +61,22 @@ onUnmounted(() => {
   <Head title="Async Request" />
   <h1 class="text-3xl">Async Request</h1>
   <p class="mt-6">Reload Count: {{ reloadCount }}</p>
-  <div>
-    <button @click="simulateConflict" class="mt-6">Simulate Conflict</button>
-  </div>
-  <div>
-    <button @click="simulateToggleConflict" class="mt-6">Simulate Toggle Conflict</button>
-  </div>
-  <div>
-    <button @click="simulateCancelledRequest" class="mt-6">Simulate Cancelled Request</button>
+  <div class="mt-6 space-y-6">
+    <div>
+      <button @click="simulateConflict" class="px-4 py-2 text-white bg-green-600 rounded">Simulate Conflict</button>
+    </div>
+    <div>
+      <button @click="simulateToggleConflict" class="px-4 py-2 text-white bg-green-600 rounded">
+        Simulate Toggle Conflict
+      </button>
+    </div>
+    <div>
+      <button @click="simulateCancelledRequest" class="px-4 py-2 text-white bg-green-600 rounded">
+        Simulate Cancelled Request
+      </button>
+    </div>
+    <div>
+      <button @click="triggerLongReload" class="px-4 py-2 text-white bg-green-600 rounded">Trigger Long Reload</button>
+    </div>
   </div>
 </template>

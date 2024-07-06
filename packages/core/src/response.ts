@@ -12,10 +12,11 @@ export class Response {
   constructor(
     protected requestParams: RequestParams,
     protected response: AxiosResponse,
+    protected originatingPage: Page,
   ) {}
 
-  public static create(params: RequestParams, response: AxiosResponse): Response {
-    return new Response(params, response)
+  public static create(params: RequestParams, response: AxiosResponse, originatingPage: Page): Response {
+    return new Response(params, response, originatingPage)
   }
 
   public async handle() {
@@ -94,6 +95,10 @@ export class Response {
   protected setPage(): Promise<void> {
     const pageResponse: Page = this.response.data
 
+    if (!this.shouldSetPage(pageResponse)) {
+      return Promise.resolve()
+    }
+
     this.mergeProps(pageResponse)
     this.setRememberedState(pageResponse)
 
@@ -106,6 +111,19 @@ export class Response {
       preserveScroll: this.requestParams.params.preserveScroll,
       preserveState: this.requestParams.params.preserveState,
     })
+  }
+
+  protected shouldSetPage(pageResponse: Page): boolean {
+    // TODO: Do we even need the pageResponse here? Maybe not?
+
+    if (!this.requestParams.params.async) {
+      // If the request is not async, we should always set the page
+      return true
+    }
+
+    // If the originating request component is different than the current component,
+    // we should not set the page yet.
+    return this.originatingPage.component === currentPage.get().component
   }
 
   protected pageUrl(pageResponse: Page) {

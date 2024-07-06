@@ -91,7 +91,7 @@ Route::get('/async', function () {
     return inertia('Async', [
         'sleep' => Inertia::lazy(function () {
             info('hit the lazy bit');
-            sleep(1);
+            sleep(4);
         }),
     ]);
 });
