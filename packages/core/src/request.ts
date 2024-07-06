@@ -29,7 +29,7 @@ export class Request {
       params: this.requestParams.queryParams(),
       signal: this.cancelToken.signal,
       headers: this.getHeaders(),
-      onUploadProgress: this.onProgress,
+      onUploadProgress: this.onProgress.bind(this),
     })
       .then((response) => {
         return Response.create(this.requestParams, response).handle()
