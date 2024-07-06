@@ -1,4 +1,5 @@
 import { AxiosResponse } from 'axios'
+import { router } from '.'
 import { fireErrorEvent, fireInvalidEvent, fireSuccessEvent } from './events'
 import { History } from './history'
 import modal from './modal'
@@ -34,6 +35,26 @@ export class Response {
       fireErrorEvent(scopedErrors)
 
       return this.requestParams.params.onError(scopedErrors)
+    }
+
+    if (this.hasHeader('x-inertia-deferred') && !this.requestParams.isPartial()) {
+      this.getHeader('x-inertia-deferred')
+        .split(',')
+        .forEach((deferred) => {
+          router.get(
+            this.response.config.url!,
+            {
+              a: Math.random(),
+            },
+            {
+              only: [deferred],
+              async: true,
+              preserveScroll: true,
+              preserveState: true,
+            },
+          )
+          // router.reload({ only: [deferred] })
+        })
     }
 
     fireSuccessEvent(currentPage.get())

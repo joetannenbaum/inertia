@@ -43,8 +43,6 @@ const triggerLongReload = () => {
 }
 
 onMounted(() => {
-  console.log('on mounted')
-
   //   timer = setTimeout(() => {
   //     router.reload({
   //       only: ['sleep'],

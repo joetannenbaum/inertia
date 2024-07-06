@@ -96,6 +96,71 @@ Route::get('/async', function () {
     ]);
 });
 
+Route::get('/defer', function () {
+    return inertia('Defer', [
+        'users' => Inertia::defer(function () {
+            sleep(1);
+
+            return [
+                [
+                    'id' => 1,
+                    'name' => 'Jonathan Reinink',
+                    'email' => 'hello@reinink.com',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Taylor Otwell',
+                    'email' => 'howdy@otwell.biz',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Joe Tannenbaum',
+                    'email' => 'yo@tannenbaum.edu',
+                ]
+            ];
+        }),
+        'foods' => Inertia::defer(function () {
+            sleep(3);
+
+            return [
+                [
+                    'id' => 1,
+                    'name' => 'Pizza',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Tacos',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Sushi',
+                ],
+            ];
+        }),
+        'organizations' => Inertia::defer(function () {
+            sleep(2);
+
+            return [
+                [
+                    'id' => 1,
+                    'name' => 'InertiaJS',
+                    'url' => 'https://inertiajs.com',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Laravel',
+                    'url' => 'https://laravel.com',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'VueJS',
+                    'url' => 'https://vuejs.org',
+                ],
+            ];
+        }),
+    ]);
+});
+
 Route::get('/goodbye', function () {
     return Inertia::location('https://inertiajs.com/redirects');
 });

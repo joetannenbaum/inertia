@@ -17,6 +17,7 @@ const appName = computed(() => page.props.appName)
     <Link href="/async" class="hover:underline">Async Request</Link>
     <Link href="/logout" method="post" as="button" type="button" class="hover:underline">Logout</Link>
     <Link href="/goodbye" class="hover:underline">Adios</Link>
+    <Link href="/defer" class="hover:underline">Defer</Link>
   </nav>
   <main class="px-10 py-8">
     <slot />
