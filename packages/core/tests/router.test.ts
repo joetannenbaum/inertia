@@ -8,6 +8,7 @@ import { Router } from '../src/router'
 import { Scroll } from '../src/scroll'
 import { SessionStorage } from '../src/sessionStorage'
 import { FormDataConvertible } from '../src/types'
+import { homePage } from './support'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -31,17 +32,6 @@ expect.extend({
     }
   },
 })
-
-const homePage = {
-  component: 'home',
-  props: {
-    errors: {},
-  },
-  url: '/',
-  version: '1',
-  scrollRegions: [],
-  rememberedState: {},
-}
 
 const getRouter = (cb?: (router: Router) => void) => {
   const router = new Router()

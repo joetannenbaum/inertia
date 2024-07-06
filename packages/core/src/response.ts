@@ -5,7 +5,7 @@ import modal from './modal'
 import { page as currentPage } from './page'
 import { RequestParams } from './requestParams'
 import { SessionStorage } from './sessionStorage'
-import { ErrorBag, Errors, LocationVisit, Page, PreserveStateOption } from './types'
+import { ErrorBag, Errors, LocationVisit, Page } from './types'
 import { hrefToUrl, isSameUrlWithoutHash, setHashIfSameUrl } from './url'
 
 export class Response {
@@ -52,9 +52,6 @@ export class Response {
     if (fireInvalidEvent(this.response)) {
       return modal.show(this.response.data)
     }
-
-    // TODO... is this correct?
-    return Promise.reject({ response: this.response })
   }
 
   protected isInertiaResponse(): boolean {
@@ -77,14 +74,17 @@ export class Response {
     return this.hasStatus(409) && this.hasHeader('x-inertia-location')
   }
 
+  /**
+   * @link https://inertiajs.com/redirects#external-redirects
+   */
   protected locationVisit(url: URL, preserveScroll: LocationVisit['preserveScroll']): boolean | void {
     try {
       SessionStorage.set({ preserveScroll })
 
-      window.location.href = url.href
-
       if (isSameUrlWithoutHash(window.location, url)) {
         window.location.reload()
+      } else {
+        window.location.href = url.href
       }
     } catch (error) {
       return false
@@ -92,37 +92,14 @@ export class Response {
   }
 
   protected setPage(): Promise<void> {
-    // TODO: Would love to type this properly if we can
     const pageResponse: Page = this.response.data
 
-    if (this.requestParams.isPartial() && pageResponse.component === currentPage.get().component) {
-      pageResponse.props = { ...currentPage.get().props, ...pageResponse.props }
-    }
+    this.mergeProps(pageResponse)
+    this.setRememberedState(pageResponse)
 
-    this.requestParams.params.preserveScroll = this.resolvePreserveOption(
-      this.requestParams.params.preserveScroll,
-      pageResponse,
-    )
-    this.requestParams.params.preserveState = this.resolvePreserveOption(
-      this.requestParams.params.preserveState,
-      pageResponse,
-    )
+    this.requestParams.setPreserveOptions(pageResponse)
 
-    if (
-      this.requestParams.params.preserveState &&
-      History.getState('rememberedState') &&
-      pageResponse.component === currentPage.get().component
-    ) {
-      pageResponse.rememberedState = History.getState('rememberedState')
-    }
-
-    const responseUrl = hrefToUrl(pageResponse.url)
-
-    setHashIfSameUrl(this.requestParams.params.url, responseUrl)
-
-    // TODO: I moved this out of the if statement,
-    // but I'm not sure if this is always applicable outside of the hash logic
-    pageResponse.url = responseUrl.href
+    pageResponse.url = this.pageUrl(pageResponse)
 
     return currentPage.set(pageResponse, {
       replace: this.requestParams.params.replace,
@@ -131,23 +108,35 @@ export class Response {
     })
   }
 
+  protected pageUrl(pageResponse: Page) {
+    const responseUrl = hrefToUrl(pageResponse.url)
+
+    setHashIfSameUrl(this.requestParams.params.url, responseUrl)
+
+    return responseUrl.href
+  }
+
+  protected mergeProps(pageResponse: Page): void {
+    if (this.requestParams.isPartial() && pageResponse.component === currentPage.get().component) {
+      pageResponse.props = { ...currentPage.get().props, ...pageResponse.props }
+    }
+  }
+
+  protected setRememberedState(pageResponse: Page): void {
+    if (
+      this.requestParams.params.preserveState &&
+      History.getState('rememberedState') &&
+      pageResponse.component === currentPage.get().component
+    ) {
+      pageResponse.rememberedState = History.getState('rememberedState')
+    }
+  }
+
   protected getScopedErrors(errors: Errors & ErrorBag): Errors {
     if (!this.requestParams.params.errorBag) {
       return errors
     }
 
     return errors[this.requestParams.params.errorBag] || {}
-  }
-
-  protected resolvePreserveOption(value: PreserveStateOption, page: Page): boolean {
-    if (typeof value === 'function') {
-      return value(page)
-    }
-
-    if (value === 'errors') {
-      return Object.keys(page.props.errors || {}).length > 0
-    }
-
-    return value
   }
 }

@@ -36,6 +36,8 @@ class CurrentPage {
       replace ? History.replaceState(page) : History.pushState(page)
 
       return this.swapComponent({ component, page, preserveState }).then(() => {
+        this.page = page
+
         if (!preserveScroll) {
           Scroll.reset(page)
         }

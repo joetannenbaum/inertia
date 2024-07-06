@@ -1,6 +1,6 @@
 import { AxiosRequestConfig } from 'axios'
 import { page as currentPage } from './page'
-import { ActiveVisit } from './types'
+import { ActiveVisit, Page, PreserveStateOption } from './types'
 
 export class RequestParams {
   constructor(public params: ActiveVisit) {
@@ -77,5 +77,22 @@ export class RequestParams {
     }
 
     return headers
+  }
+
+  public setPreserveOptions(page: Page) {
+    this.params.preserveScroll = this.resolvePreserveOption(this.params.preserveScroll, page)
+    this.params.preserveState = this.resolvePreserveOption(this.params.preserveState, page)
+  }
+
+  protected resolvePreserveOption(value: PreserveStateOption, page: Page): boolean {
+    if (typeof value === 'function') {
+      return value(page)
+    }
+
+    if (value === 'errors') {
+      return Object.keys(page.props.errors || {}).length > 0
+    }
+
+    return value
   }
 }
