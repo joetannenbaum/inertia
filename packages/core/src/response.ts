@@ -138,12 +138,18 @@ export class Response {
     // TODO: Do we even need the pageResponse here? Maybe not?
 
     if (!this.requestParams.params.async) {
-      // If the request is not async, we should always set the page
+      // If the request is sync, we should always set the page
       return true
     }
 
-    // If the originating request component is different than the current component,
-    // we should not set the page yet.
+    if (this.originatingPage.component !== pageResponse.component) {
+      // We originated from a component but the response re-directed us,
+      // we should respect the redirection and set the page
+      return true
+    }
+
+    // At this point, if the originating request component is different than the current component,
+    // the user has since navigated and we should discard the response
     return this.originatingPage.component === currentPage.get().component
   }
 
