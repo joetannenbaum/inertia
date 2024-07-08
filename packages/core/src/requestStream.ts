@@ -18,14 +18,22 @@ export class RequestStream {
     })
   }
 
-  public cancelInFlight(force = false): void {
+  public interruptInFlight(): void {
+    this.cancel({ interrupted: true }, false)
+  }
+
+  public cancelInFlight(): void {
+    this.cancel({ cancelled: true }, true)
+  }
+
+  protected cancel({ cancelled = false, interrupted = false } = {}, force: boolean): void {
     if (!this.shouldCancel(force)) {
       return
     }
 
     const request = this.requests.shift()!
 
-    request.cancel({ interrupted: true })
+    request?.cancel({ interrupted, cancelled })
   }
 
   protected shouldCancel(force: boolean): boolean {

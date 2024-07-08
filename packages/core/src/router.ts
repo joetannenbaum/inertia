@@ -88,8 +88,12 @@ export class Router {
   }
 
   public cancel(): void {
-    this.asyncRequestStream.cancelInFlight(true)
-    this.syncRequestStream.cancelInFlight(true)
+    this.syncRequestStream.cancelInFlight()
+  }
+
+  public cancelAll(): void {
+    this.asyncRequestStream.cancelInFlight()
+    this.syncRequestStream.cancelInFlight()
   }
 
   public visit(
@@ -145,7 +149,7 @@ export class Router {
 
     const requestStream = async ? this.asyncRequestStream : this.syncRequestStream
 
-    requestStream.cancelInFlight()
+    requestStream.interruptInFlight()
 
     // Save scroll regions for the current page
     Scroll.save(currentPage.get())

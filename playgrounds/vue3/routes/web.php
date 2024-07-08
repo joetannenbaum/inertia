@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -90,10 +91,27 @@ Route::get('/login', function () {
 Route::get('/async', function () {
     return inertia('Async', [
         'sleep' => Inertia::lazy(function () {
-            info('hit the lazy bit');
             sleep(4);
         }),
+        'jonathan' => Cache::get('jonathan', false),
+        'taylor' => Cache::get('taylor', false),
+        'joe' => Cache::get('joe', false),
     ]);
+});
+
+Route::post('/async/checkbox', function () {
+    sleep(2);
+    $previousJoe = Cache::get('joe', false);
+
+    Cache::put('jonathan', request('jonathan'), 10);
+    Cache::put('taylor', request('taylor'), 10);
+    Cache::put('joe', request('joe'), 10);
+
+    if (!$previousJoe && request()->boolean('joe')) {
+        return redirect('article');
+    }
+
+    return redirect('/async');
 });
 
 Route::get('/defer', function () {
@@ -165,13 +183,13 @@ Route::get('/goodbye', function () {
     return Inertia::location('https://inertiajs.com/redirects');
 });
 
-Route::get('/sleepy', function () {
-    sleep(2);
+Route::get('/sleepy/{duration}', function ($duration) {
+    sleep($duration);
     return inertia('Users');
 });
 
-Route::post('/sleepy', function () {
-    sleep(2);
+Route::post('/sleepy/{duration}', function ($duration) {
+    sleep($duration);
     return inertia('Article');
 });
 
