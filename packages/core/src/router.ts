@@ -5,6 +5,7 @@ import { isFormData, objectToFormData } from './formData'
 import { History } from './history'
 import { navigationType } from './navigationType'
 import { page as currentPage } from './page'
+import { poll } from './poll'
 import { Request } from './request'
 import { RequestStream } from './requestStream'
 import { Scroll } from './scroll'
@@ -94,6 +95,10 @@ export class Router {
   public cancelAll(): void {
     this.asyncRequestStream.cancelInFlight()
     this.syncRequestStream.cancelInFlight()
+  }
+
+  public poll(interval: number, options: Omit<VisitOptions, 'preserveScroll' | 'preserveState'> = {}): VoidFunction {
+    return poll.add(interval, () => this.reload(options))
   }
 
   public visit(

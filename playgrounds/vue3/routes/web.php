@@ -183,6 +183,30 @@ Route::get('/goodbye', function () {
     return Inertia::location('https://inertiajs.com/redirects');
 });
 
+
+Route::get('/poll', function () {
+    return inertia('Poll', [
+        'users' => collect([
+            'Jonathan Reinink',
+            'Taylor Otwell',
+            'Joe Tannenbaum',
+            'Jess Archer',
+            'Claudio Dekker',
+            'Sebastian De Deyne',
+            'Pedro Borges',
+        ])->shuffle()->take(3)->values(),
+        'companies' => collect([
+            'InertiaJS',
+            'Laravel',
+            'VueJS',
+            'Tailwind CSS',
+            'AlpineJS',
+            'Livewire',
+            'Spatie',
+        ])->shuffle()->take(3)->values(),
+    ]);
+});
+
 Route::get('/sleepy/{duration}', function ($duration) {
     sleep($duration);
     return inertia('Users');

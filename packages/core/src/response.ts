@@ -4,6 +4,7 @@ import { fireErrorEvent, fireInvalidEvent, fireSuccessEvent } from './events'
 import { History } from './history'
 import modal from './modal'
 import { page as currentPage } from './page'
+import { poll } from './poll'
 import { RequestParams } from './requestParams'
 import { SessionStorage } from './sessionStorage'
 import { ErrorBag, Errors, LocationVisit, Page } from './types'
@@ -23,6 +24,11 @@ export class Response {
   public async handle() {
     if (!this.isInertiaResponse()) {
       return this.handleNonInertiaResponse()
+    }
+
+    if (!this.requestParams.isPartial()) {
+      console.log('clearing polls.')
+      poll.clear()
     }
 
     await this.setPage()
