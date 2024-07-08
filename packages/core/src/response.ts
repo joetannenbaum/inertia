@@ -27,7 +27,6 @@ export class Response {
     }
 
     if (!this.requestParams.isPartial()) {
-      console.log('clearing polls.')
       poll.clear()
     }
 
