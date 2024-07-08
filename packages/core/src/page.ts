@@ -1,7 +1,7 @@
 import { fireNavigateEvent } from './events'
 import { History } from './history'
 import { Scroll } from './scroll'
-import { Page, PageHandler, PageResolver, PreserveStateOption, RouterInitParams } from './types'
+import { Component, Page, PageHandler, PageResolver, PreserveStateOption, RouterInitParams } from './types'
 import { hrefToUrl, isSameUrlWithoutHash } from './url'
 
 class CurrentPage {
@@ -35,7 +35,7 @@ class CurrentPage {
       replace = replace || isSameUrlWithoutHash(hrefToUrl(page.url), window.location)
       replace ? History.replaceState(page) : History.pushState(page)
 
-      return this.swapComponent({ component, page, preserveState }).then(() => {
+      return this.swap({ component, page, preserveState }).then(() => {
         this.page = page
 
         if (!preserveScroll) {
@@ -70,9 +70,9 @@ class CurrentPage {
     page,
     preserveState,
   }: {
-    component: any
+    component: Component
     page: Page
-    preserveState: boolean
+    preserveState: PreserveStateOption
   }): Promise<unknown> {
     return this.swapComponent({ component, page, preserveState })
   }
