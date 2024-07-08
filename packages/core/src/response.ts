@@ -7,7 +7,7 @@ import { page as currentPage } from './page'
 import { poll } from './poll'
 import { RequestParams } from './requestParams'
 import { SessionStorage } from './sessionStorage'
-import { ErrorBag, Errors, LocationVisit, Page } from './types'
+import { ErrorBag, Errors, LocationVisit, Page, VisitOptions } from './types'
 import { hrefToUrl, isSameUrlWithoutHash, setHashIfSameUrl } from './url'
 
 export class Response {
@@ -42,29 +42,27 @@ export class Response {
       return this.requestParams.params.onError(scopedErrors)
     }
 
-    if (this.hasHeader('x-inertia-deferred') && !this.requestParams.isPartial()) {
-      this.getHeader('x-inertia-deferred')
-        .split(',')
-        .forEach((deferred) => {
-          router.get(
-            this.response.config.url!,
-            {
-              a: Math.random(),
-            },
-            {
-              only: [deferred],
-              async: true,
-              preserveScroll: true,
-              preserveState: true,
-            },
-          )
-          // router.reload({ only: [deferred] })
-        })
-    }
+    this.loadDeferredProps()
 
     fireSuccessEvent(currentPage.get())
 
     this.requestParams.params.onSuccess(currentPage.get())
+  }
+
+  protected loadDeferredProps() {
+    if (!this.response.data.props.deferred) {
+      // We don't have any deferred props to load
+      return
+    }
+
+    if (this.requestParams.isPartial()) {
+      // We only load deferred props on full page visits
+      return
+    }
+
+    Object.entries(this.response.data.props.deferred).forEach(([key, group]) => {
+      router.reload({ only: group as VisitOptions['only'] })
+    })
   }
 
   protected async handleNonInertiaResponse() {
