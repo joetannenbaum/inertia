@@ -136,7 +136,7 @@ Route::get('/defer', function () {
                     'email' => 'yo@tannenbaum.edu',
                 ]
             ];
-        }),
+        }, 'users'),
         'foods' => Inertia::defer(function () {
             sleep(3);
 

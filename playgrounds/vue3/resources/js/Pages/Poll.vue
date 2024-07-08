@@ -1,4 +1,5 @@
 <script lang="ts">
+import usePoll from '../../../../../packages/vue3/src/usePoll'
 import Layout from '../Components/Layout.vue'
 export default { layout: Layout }
 </script>
@@ -14,6 +15,13 @@ defineProps<{
 
 const userPollCount = ref(0)
 const companyPollCount = ref(0)
+
+const { stop } = usePoll(2000, {
+  only: ['asdf'],
+  onFinish() {
+    userPollCount.value++
+  },
+})
 
 onMounted(() => {
   const stopUserPolling = router.poll(1000, {
