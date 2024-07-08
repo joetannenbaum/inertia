@@ -33,6 +33,7 @@ export interface Page<SharedProps extends PageProps = PageProps> {
   props: PageProps &
     SharedProps & {
       errors: Errors & ErrorBag
+      deferred?: Record<string, VisitOptions['only']>
     }
   url: string
   version: string | null
@@ -179,6 +180,8 @@ export type VisitOptions = Partial<
     onError: GlobalEventCallback<'error'>
   }
 >
+
+export type ReloadOptions = Omit<VisitOptions, 'preserveScroll' | 'preserveState'>
 
 export type VisitHelperOptions = Omit<VisitOptions, 'method' | 'data'>
 

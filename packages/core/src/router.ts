@@ -18,6 +18,7 @@ import {
   Method,
   Page,
   PendingVisit,
+  ReloadOptions,
   RequestPayload,
   RouterInitParams,
   VisitHelperOptions,
@@ -61,7 +62,7 @@ export class Router {
     return this.visit(url, { preserveState: true, ...options, method: 'delete' })
   }
 
-  public reload(options: Omit<VisitOptions, 'preserveScroll' | 'preserveState'> = {}): void {
+  public reload(options: ReloadOptions = {}): void {
     return this.visit(window.location.href, { ...options, preserveScroll: true, preserveState: true, async: true })
   }
 
@@ -97,7 +98,7 @@ export class Router {
     this.syncRequestStream.cancelInFlight()
   }
 
-  public poll(interval: number, options: Omit<VisitOptions, 'preserveScroll' | 'preserveState'> = {}): VoidFunction {
+  public poll(interval: number, options: ReloadOptions = {}): VoidFunction {
     return poll.add(interval, () => this.reload(options))
   }
 
@@ -237,7 +238,17 @@ export class Router {
 
   protected handleInitialPageVisit(): void {
     currentPage.setUrlHash(window.location.hash)
-    currentPage.set(currentPage.get(), { preserveState: true }).then(() => fireNavigateEvent(currentPage.get()))
+    currentPage.set(currentPage.get(), { preserveState: true }).then(() => {
+      fireNavigateEvent(currentPage.get())
+
+      const deferred = currentPage.get().props.deferred
+
+      if (deferred) {
+        Object.entries(deferred).forEach(([key, group]) => {
+          this.reload({ only: group })
+        })
+      }
+    })
   }
 
   protected setupEventListeners(): void {
