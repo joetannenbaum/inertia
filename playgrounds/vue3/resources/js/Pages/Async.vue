@@ -53,8 +53,17 @@ const triggerVisitThenReload = () => {
 const triggerLongReload = () => {
   router.reload({
     only: ['sleep'],
+    onFinish() {
+      console.log('finished reload')
+      reloadCount.value++
+      console.log('incremented reload count')
+    },
   })
 }
+
+watch(reloadCount, () => {
+  console.log('watched reload count value', reloadCount.value)
+})
 
 onMounted(() => {
   //   timer = setTimeout(() => {
