@@ -288,7 +288,7 @@ export class Router {
    * @link https://inertiajs.com/redirects#external-redirects
    */
   protected handleLocationVisit(): void {
-    const locationVisit: LocationVisit = JSON.parse(SessionStorage.get(''))
+    const locationVisit: LocationVisit = JSON.parse(SessionStorage.get() || '{}')
 
     SessionStorage.remove()
 
@@ -297,7 +297,10 @@ export class Router {
     currentPage.scrollRegions(History.getState<Page['scrollRegions']>('scrollRegions', []))
 
     currentPage
-      .set(currentPage.get(), { preserveScroll: locationVisit.preserveScroll, preserveState: true })
+      .set(currentPage.get(), {
+        preserveScroll: locationVisit.preserveScroll,
+        preserveState: true,
+      })
       .then(() => {
         if (locationVisit.preserveScroll) {
           Scroll.restore(currentPage.get())

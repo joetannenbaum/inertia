@@ -5,8 +5,8 @@ export class SessionStorage {
     window.sessionStorage.setItem(this.key, JSON.stringify(value))
   }
 
-  public static get<T>(defaultValue: T): string | T {
-    return window.sessionStorage.getItem(this.key) || defaultValue
+  public static get(): string | null {
+    return window.sessionStorage.getItem(this.key)
   }
 
   public static remove(): void {
@@ -15,7 +15,7 @@ export class SessionStorage {
 
   public static exists(): boolean {
     try {
-      return this.get(null) !== null
+      return this.get() !== null
     } catch (error) {
       return false
     }
