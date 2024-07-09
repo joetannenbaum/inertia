@@ -27,8 +27,15 @@ import {
 import { hrefToUrl, mergeDataIntoQueryString } from './url'
 
 export class Router {
-  protected syncRequestStream = new RequestStream(1, true)
-  protected asyncRequestStream = new RequestStream(Infinity, false)
+  protected syncRequestStream = new RequestStream({
+    maxConcurrent: 1,
+    interruptible: true,
+  })
+
+  protected asyncRequestStream = new RequestStream({
+    maxConcurrent: Infinity,
+    interruptible: false,
+  })
 
   public init({ initialPage, resolveComponent, swapComponent }: RouterInitParams): void {
     currentPage.init({

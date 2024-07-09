@@ -3,11 +3,13 @@ import { Request } from './request'
 export class RequestStream {
   protected requests: Request[] = []
 
-  constructor(
-    protected maxConcurrent: number,
-    protected interruptible: boolean,
-  ) {
-    //
+  protected maxConcurrent: number
+
+  protected interruptible: boolean
+
+  constructor({ maxConcurrent, interruptible }: { maxConcurrent: number; interruptible: boolean }) {
+    this.maxConcurrent = maxConcurrent
+    this.interruptible = interruptible
   }
 
   public send(request: Request) {
