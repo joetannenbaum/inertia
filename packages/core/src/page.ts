@@ -8,7 +8,7 @@ class CurrentPage {
   protected page!: Page
   protected swapComponent!: PageHandler
   protected resolveComponent!: PageResolver
-  protected componentId = null
+  protected componentId = {}
 
   public init({ initialPage, swapComponent, resolveComponent }: RouterInitParams) {
     this.page = initialPage
