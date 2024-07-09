@@ -9,6 +9,8 @@ class CurrentPage {
   protected swapComponent!: PageHandler
   protected resolveComponent!: PageResolver
   protected componentId = {}
+  protected onNewComponentCallbacks: VoidFunction[] = []
+  protected firstPageLoad = true
 
   public init({ initialPage, swapComponent, resolveComponent }: RouterInitParams) {
     this.page = initialPage
@@ -51,6 +53,8 @@ class CurrentPage {
           return
         }
 
+        const isNewComponent = !this.isTheSame(page) || this.firstPageLoad
+
         this.page = page
 
         if (!preserveScroll) {
@@ -60,6 +64,12 @@ class CurrentPage {
         if (!replace) {
           fireNavigateEvent(page)
         }
+
+        if (isNewComponent) {
+          this.onNewComponentCallbacks.forEach((cb) => cb())
+        }
+
+        this.firstPageLoad = false
       })
     })
   }
@@ -98,6 +108,14 @@ class CurrentPage {
 
   public isTheSame(page: Page): boolean {
     return this.page.component === page.component
+  }
+
+  public onNewComponent(cb: VoidFunction): VoidFunction {
+    this.onNewComponentCallbacks.push(cb)
+
+    return () => {
+      this.onNewComponentCallbacks = this.onNewComponentCallbacks.filter((callback) => callback !== cb)
+    }
   }
 }
 

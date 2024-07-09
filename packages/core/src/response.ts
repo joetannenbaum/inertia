@@ -1,5 +1,4 @@
 import { AxiosResponse } from 'axios'
-import { router } from '.'
 import { fireErrorEvent, fireInvalidEvent, fireSuccessEvent } from './events'
 import { History } from './history'
 import modal from './modal'
@@ -7,7 +6,7 @@ import { page as currentPage } from './page'
 import { poll } from './poll'
 import { RequestParams } from './requestParams'
 import { SessionStorage } from './sessionStorage'
-import { ErrorBag, Errors, LocationVisit, Page, VisitOptions } from './types'
+import { ErrorBag, Errors, LocationVisit, Page } from './types'
 import { hrefToUrl, isSameUrlWithoutHash, setHashIfSameUrl } from './url'
 
 export class Response {
@@ -38,27 +37,9 @@ export class Response {
       return this.requestParams.params.onError(scopedErrors)
     }
 
-    this.loadDeferredProps()
-
     fireSuccessEvent(currentPage.get())
 
     this.requestParams.params.onSuccess(currentPage.get())
-  }
-
-  protected loadDeferredProps() {
-    if (!this.response.data.props.deferred) {
-      // We don't have any deferred props to load
-      return
-    }
-
-    if (this.requestParams.isPartial()) {
-      // We only load deferred props on full page visits
-      return
-    }
-
-    Object.entries(this.response.data.props.deferred).forEach(([key, group]) => {
-      router.reload({ only: group as VisitOptions['only'] })
-    })
   }
 
   protected async handleNonInertiaResponse() {

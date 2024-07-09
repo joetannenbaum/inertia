@@ -38,11 +38,13 @@ export class Router {
   })
 
   public init({ initialPage, resolveComponent, swapComponent }: RouterInitParams): void {
-    currentPage.init({
-      initialPage,
-      resolveComponent,
-      swapComponent,
-    })
+    currentPage
+      .init({
+        initialPage,
+        resolveComponent,
+        swapComponent,
+      })
+      .onNewComponent(this.loadDeferredProps.bind(this))
 
     this.clearRememberedStateOnReload()
     this.initializeVisit()
@@ -199,6 +201,16 @@ export class Router {
     return this.visit(url, { preserveState: true, ...options, replace: true })
   }
 
+  protected loadDeferredProps(): void {
+    const deferred = currentPage.get().props.deferred
+
+    if (deferred) {
+      Object.entries(deferred).forEach(([key, group]) => {
+        this.reload({ only: group })
+      })
+    }
+  }
+
   protected transformUrlAndData(
     href: string | URL,
     data: RequestPayload,
@@ -247,14 +259,6 @@ export class Router {
     currentPage.setUrlHash(window.location.hash)
     currentPage.set(currentPage.get(), { preserveState: true }).then(() => {
       fireNavigateEvent(currentPage.get())
-
-      const deferred = currentPage.get().props.deferred
-
-      if (deferred) {
-        Object.entries(deferred).forEach(([key, group]) => {
-          this.reload({ only: group })
-        })
-      }
     })
   }
 
