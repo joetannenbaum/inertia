@@ -26,10 +26,6 @@ export class Response {
       return this.handleNonInertiaResponse()
     }
 
-    if (!this.requestParams.isPartial()) {
-      poll.clear()
-    }
-
     await this.setPage()
 
     const errors = currentPage.get().props.errors || {}
@@ -130,6 +126,10 @@ export class Response {
 
     pageResponse.url = this.pageUrl(pageResponse)
 
+    if (!currentPage.isTheSame(pageResponse)) {
+      poll.clear()
+    }
+
     return currentPage.set(pageResponse, {
       replace: this.requestParams.params.replace,
       preserveScroll: this.requestParams.params.preserveScroll,
@@ -138,8 +138,6 @@ export class Response {
   }
 
   protected shouldSetPage(pageResponse: Page): boolean {
-    // TODO: Do we even need the pageResponse here? Maybe not?
-
     if (!this.requestParams.params.async) {
       // If the request is sync, we should always set the page
       return true

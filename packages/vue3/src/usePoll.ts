@@ -2,7 +2,7 @@ import { ReloadOptions, VoidFunction } from '@inertiajs/core'
 import { router } from '@inertiajs/vue3'
 import { onMounted, onUnmounted } from 'vue'
 
-export default function usePoll(interval: number, options: ReloadOptions): VoidFunction {
+export default function usePoll(interval: number, options: ReloadOptions, startOnMount = true): VoidFunction {
   let stopFunc: VoidFunction
 
   let stop = () => {
@@ -11,8 +11,15 @@ export default function usePoll(interval: number, options: ReloadOptions): VoidF
     }
   }
 
-  onMounted(() => {
+  let start = () => {
+    stop()
     stopFunc = router.poll(interval, options)
+  }
+
+  onMounted(() => {
+    if (startOnMount) {
+      start()
+    }
   })
 
   onUnmounted(() => {
@@ -21,5 +28,6 @@ export default function usePoll(interval: number, options: ReloadOptions): VoidF
 
   return {
     stop,
+    start,
   }
 }

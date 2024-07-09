@@ -34,7 +34,7 @@ class CurrentPage {
 
     const componentId = this.componentId
 
-    return Promise.resolve(this.resolveComponent(page.component)).then((component) => {
+    return Promise.resolve(this.resolve(page.component)).then((component) => {
       if (componentId !== this.componentId) {
         // Component has changed since we started resolving this component, bail
         return
@@ -94,6 +94,10 @@ class CurrentPage {
 
   public resolve(component: string): unknown {
     return this.resolveComponent(component)
+  }
+
+  public isTheSame(page: Page): boolean {
+    return this.page.component === page.component
   }
 }
 

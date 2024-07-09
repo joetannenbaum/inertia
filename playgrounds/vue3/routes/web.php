@@ -207,6 +207,10 @@ Route::get('/poll', function () {
     ]);
 });
 
+Route::get('/elsewhere', function () {
+    return inertia('Users');
+});
+
 Route::get('/sleepy/{duration}', function ($duration) {
     sleep($duration);
     return inertia('Users');

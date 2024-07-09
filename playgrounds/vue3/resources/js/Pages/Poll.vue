@@ -14,14 +14,30 @@ defineProps<{
 }>()
 
 const userPollCount = ref(0)
+const hookPollCount = ref(0)
 const companyPollCount = ref(0)
 
-const { stop } = usePoll(2000, {
-  only: ['asdf'],
-  onFinish() {
-    userPollCount.value++
+const trigegerAsyncRedirect = () => {
+  router.get(
+    '/elsewhere',
+    {},
+    {
+      only: ['something'],
+      async: true,
+    },
+  )
+}
+
+const { stop } = usePoll(
+  2000,
+  {
+    only: ['asdf'],
+    onFinish() {
+      hookPollCount.value++
+    },
   },
-})
+  false,
+)
 
 onMounted(() => {
   const stopUserPolling = router.poll(1000, {
@@ -48,15 +64,21 @@ onMounted(() => {
 <template>
   <Head title="Async Request" />
   <h1 class="text-3xl">Poll</h1>
-  <div class="mt-6 space-y-6">
-    <div class="font-bold">User Poll Request Count: {{ userPollCount }}</div>
-    <div v-for="user in users">
-      <div>{{ user }}</div>
+  <div class="flex mt-6 space-x-6">
+    <div>
+      <div class="mb-2 font-bold">User Poll Request Count: {{ userPollCount }}</div>
+      <div v-for="user in users">
+        <div>{{ user }}</div>
+      </div>
     </div>
-
-    <div class="font-bold">Companies Poll Request Count: {{ companyPollCount }}</div>
-    <div v-for="company in companies">
-      <div>{{ company }}</div>
+    <div>
+      <div class="mb-2 font-bold">Companies Poll Request Count: {{ companyPollCount }}</div>
+      <div v-for="company in companies">
+        <div>{{ company }}</div>
+      </div>
+    </div>
+    <div>
+      <button @click="trigegerAsyncRedirect">Trigger Async Redirect</button>
     </div>
   </div>
 </template>
