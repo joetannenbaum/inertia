@@ -8,6 +8,7 @@ class CurrentPage {
   protected page!: Page
   protected swapComponent!: PageHandler
   protected resolveComponent!: PageResolver
+  protected componentId = null
 
   public init({ initialPage, swapComponent, resolveComponent }: RouterInitParams) {
     this.page = initialPage
@@ -29,13 +30,27 @@ class CurrentPage {
       preserveState?: PreserveStateOption
     } = {},
   ): Promise<void> {
+    this.componentId = {}
+
+    const componentId = this.componentId
+
     return Promise.resolve(this.resolveComponent(page.component)).then((component) => {
+      if (componentId !== this.componentId) {
+        // Component has changed since we started resolving this component, bail
+        return
+      }
+
       page.scrollRegions = page.scrollRegions || []
       page.rememberedState = page.rememberedState || {}
       replace = replace || isSameUrlWithoutHash(hrefToUrl(page.url), window.location)
       replace ? History.replaceState(page) : History.pushState(page)
 
       return this.swap({ component, page, preserveState }).then(() => {
+        if (componentId !== this.componentId) {
+          // Component has changed since we started swapping this component, bail
+          return
+        }
+
         this.page = page
 
         if (!preserveScroll) {
