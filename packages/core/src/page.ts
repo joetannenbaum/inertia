@@ -42,8 +42,8 @@ class CurrentPage {
         return
       }
 
-      page.scrollRegions = page.scrollRegions || []
-      page.rememberedState = page.rememberedState || {}
+      page.scrollRegions ??= []
+      page.rememberedState ??= {}
       replace = replace || isSameUrlWithoutHash(hrefToUrl(page.url), window.location)
       replace ? History.replaceState(page) : History.pushState(page)
 
