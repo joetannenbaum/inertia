@@ -47,16 +47,17 @@ class CurrentPage {
       replace = replace || isSameUrlWithoutHash(hrefToUrl(page.url), window.location)
       replace ? History.replaceState(page) : History.pushState(page)
 
+      const isNewComponent = !this.isTheSame(page) || this.firstPageLoad
+
+      this.page = page
+
+      if (isNewComponent) {
+        this.onNewComponentCallbacks.forEach((cb) => cb())
+      }
+
+      this.firstPageLoad = false
+
       return this.swap({ component, page, preserveState }).then(() => {
-        if (componentId !== this.componentId) {
-          // Component has changed since we started swapping this component, bail
-          return
-        }
-
-        const isNewComponent = !this.isTheSame(page) || this.firstPageLoad
-
-        this.page = page
-
         if (!preserveScroll) {
           Scroll.reset(page)
         }
@@ -64,12 +65,6 @@ class CurrentPage {
         if (!replace) {
           fireNavigateEvent(page)
         }
-
-        if (isNewComponent) {
-          this.onNewComponentCallbacks.forEach((cb) => cb())
-        }
-
-        this.firstPageLoad = false
       })
     })
   }
