@@ -311,7 +311,9 @@ export class Router {
   }
 
   protected handlePopstateEvent(event: PopStateEvent): void {
-    if (event.state === null) {
+    const page = event.state
+
+    if (page === null) {
       const url = hrefToUrl(currentPage.get().url)
       url.hash = window.location.hash
 
@@ -321,13 +323,12 @@ export class Router {
       return
     }
 
-    // TODO: This is a funny section...
-    const page = event.state
-    const component = currentPage.resolve(page.component)
-
-    currentPage.swap({ component, page, preserveState: false }).then(() => {
-      Scroll.restore(page)
-      fireNavigateEvent(page)
-    })
+    currentPage
+      .resolve(page.component)
+      .then((component) => currentPage.swap({ component, page, preserveState: false }))
+      .then(() => {
+        Scroll.restore(page)
+        fireNavigateEvent(page)
+      })
   }
 }
